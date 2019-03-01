@@ -1,6 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+       xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!--Spring扫描业务层-->
+<context:component-scan base-package="com.lanou.service"/>
+    <!--加载properties文件-->
+    <context:property-placeholder location="jdbc.properties"/>
+
+    <!--配置数据库连接池-->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+        <property name="driverClassName" value="${jdbc.driver}"/>
+        <property name="url" value="${jdbc.url}"/>
+        <property name="username" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+    </bean>
+
+    <!--配置SqlSessionFactoryBean用于创建SqlSessionFactory,创建SqlSession-->
+    <bean class="org.mybatis.spring.SqlSessionFactoryBean">
+        <!--配置数据源-->
+        <property name="dataSource" ref="dataSource"/>
+        <!--相当于mybatis设置，参照：http://www.mybatis.org/mybatis-3/zh/index.html-->
+        <property name="configuration">
+          <!--开启通用Mapper-->
+            <bean class="tk.mybatis.mapper.session.Configuration">
+                <!--开启mybatis的日志,方便查看SQL语句-->
+
+                <property name="logImpl" value="org.apache.ibatis.logging.log4j.Log4jImpl"/>
+                <!--开启驼峰命名法和蛇形命名转换,比如:数据库中表的字段为a_name,转换为aName-->
+                <property name="mapUnderscoreToCamelCase" value="true"/>
+                <!--通用mapper的配置,参照:https://gitee.com/free/Mapper/wikis/3.config?sort_id=208207-->
+                <property name="mapperProperties">
+                    <value>
+                        notEmpty=true
+                    </value>
+                </property>
+            </bean>
+        </property>
+
+        <!--添加mybatis的分页插件pageHelper-->
+        <property name="plugins">
+            <array>
+                <!--加载Pagehelper，进行分页查询。参照：
+                https://pagehelper.github.io/docs/howtouse/ -->
+                <bean class="com.github.pagehelper.PageInterceptor">
+                    <!--pageHelper的配置-->
+                    <property name="properties">
+                        <!--pageHelper的参数-->
+                        <value>
+                            helperDialect=mysql
+                            reasonable=true
+                        </value>
+                    </property>
+                </bean>
+            </array>
+        </property>
+    </bean>
+
+    <!--MyBatis的包扫描-->
+    <!--扫描dao层接口-->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.lanou.dao"/>
+    </bean>
+    <!--开启Spring事务-->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!--开启事务注解,使用aop的技术,对添加了@Transactional的类中的方法进行通知(增强)-->
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+    <!--开启aop的注解-->
+    <aop:aspectj-autoproxy/>
+
+
 
 </beans>
